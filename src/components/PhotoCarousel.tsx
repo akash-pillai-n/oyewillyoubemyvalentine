@@ -2,18 +2,18 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import anime from "animejs";
 import { TEXTS } from "@/lib/valentineConfig";
 
-// All images from the img folder (served from public/img)
-const CAROUSEL_IMAGES = [
-  "/img/IMG_1624.jpeg",
-  "/img/IMG_4076.jpeg",
-  "/img/IMG_4265.jpeg",
-  "/img/IMG_4321.jpeg",
-  "/img/IMG_5957.JPG",
-  "/img/IMG_7555.JPG",
-  "/img/IMG_7990.JPG",
-  "/img/Snapchat-1321052925.jpg",
-  "/img/Snapchat-1616417266.jpg",
-  "/img/Snapchat-319009705.jpg",
+// All images from the img folder (public/img). Use BASE_URL so they work on GitHub Pages.
+const IMAGE_PATHS = [
+  "img/IMG_1624.jpeg",
+  "img/IMG_4076.jpeg",
+  "img/IMG_4265.jpeg",
+  "img/IMG_4321.jpeg",
+  "img/IMG_5957.JPG",
+  "img/IMG_7555.JPG",
+  "img/IMG_7990.JPG",
+  "img/Snapchat-1321052925.jpg",
+  "img/Snapchat-1616417266.jpg",
+  "img/Snapchat-319009705.jpg",
 ];
 
 const SLIDE_DURATION_MS = 800; // < 1 sec per picture
@@ -32,8 +32,8 @@ const PhotoCarousel = ({ onComplete }: Props) => {
   const goToNext = useCallback(() => {
     if (hasCompletedCycle.current) return;
 
-    const nextIndex = (currentIndex + 1) % CAROUSEL_IMAGES.length;
-    const isLastSlide = currentIndex === CAROUSEL_IMAGES.length - 1;
+    const nextIndex = (currentIndex + 1) % IMAGE_PATHS.length;
+    const isLastSlide = currentIndex === IMAGE_PATHS.length - 1;
 
     if (isLastSlide) {
       hasCompletedCycle.current = true;
@@ -83,12 +83,12 @@ const PhotoCarousel = ({ onComplete }: Props) => {
           className="relative overflow-hidden rounded-xl aspect-[4/3] bg-muted"
           style={{ isolation: "isolate" }}
         >
-          {CAROUSEL_IMAGES.map((src, i) => (
+          {IMAGE_PATHS.map((path, i) => (
             <div
-              key={src}
+              key={path}
               className="absolute inset-0 rounded-xl bg-cover bg-center bg-no-repeat ease-in-out"
               style={{
-                backgroundImage: `url(${src})`,
+                backgroundImage: `url(${import.meta.env.BASE_URL}${path})`,
                 opacity: i === currentIndex ? 1 : 0,
                 zIndex: i === currentIndex ? 1 : 0,
                 transition: `opacity ${CROSSFADE_DURATION_MS}ms ease-in-out`,
