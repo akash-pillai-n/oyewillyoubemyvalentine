@@ -4,6 +4,8 @@ import anime from "animejs";
 interface Props {
   label: string;
   onCaught: () => void;
+  getInitialPos?: () => { x: number; y: number };
+  onFirstDodge?: () => void;
 }
 
 const TAUNTS = [
@@ -26,23 +28,28 @@ const EASINGS = [
   "spring(1, 80, 10, 0)",
 ];
 
-const RunawayButton = ({ label, onCaught }: Props) => {
+const RunawayButton = ({ label, onCaught, getInitialPos, onFirstDodge }: Props) => {
   const btnRef = useRef<HTMLButtonElement>(null);
   const isMorphed = useRef(false);
   const dodgeCount = useRef(0);
   const [text, setText] = useState(label);
-  const [pos, setPos] = useState({ x: 0, y: 0 });
+  const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
   const isReady = useRef(false);
 
-  // Place button initially near center-right
+  // Place button at initial position (side by side with Yes)
   useEffect(() => {
-    const btn = btnRef.current;
-    if (!btn) return;
-    const x = window.innerWidth * 0.55;
-    const y = window.innerHeight * 0.6;
-    setPos({ x, y });
-    isReady.current = true;
-  }, []);
+    // Small delay to let the anchor render
+    const timer = setTimeout(() => {
+      if (getInitialPos) {
+        const p = getInitialPos();
+        setPos(p);
+      } else {
+        setPos({ x: window.innerWidth * 0.55, y: window.innerHeight * 0.5 });
+      }
+      isReady.current = true;
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [getInitialPos]);
 
   const getRandomPos = useCallback(() => {
     const btn = btnRef.current;
@@ -59,21 +66,20 @@ const RunawayButton = ({ label, onCaught }: Props) => {
   }, []);
 
   const dodge = useCallback(() => {
-    if (isMorphed.current || !btnRef.current || !isReady.current) return;
+    if (isMorphed.current || !btnRef.current || !isReady.current || !pos) return;
 
     dodgeCount.current++;
+
+    // Notify parent on first dodge
+    if (dodgeCount.current === 1 && onFirstDodge) {
+      onFirstDodge();
+    }
+
     const newPos = getRandomPos();
-
-    // Pick a random easing for variety
     const easing = EASINGS[dodgeCount.current % EASINGS.length];
-
-    // Pick a random taunt
     setText(TAUNTS[dodgeCount.current % TAUNTS.length]);
-
-    // Random rotation for playfulness
     const rotation = (Math.random() - 0.5) * 30;
 
-    // Animate with visible movement
     anime.remove(btnRef.current);
     anime({
       targets: btnRef.current,
@@ -84,16 +90,15 @@ const RunawayButton = ({ label, onCaught }: Props) => {
       duration: 400 + Math.random() * 200,
       easing: easing,
       complete: () => {
-        // Update actual position and reset transform
         setPos(newPos);
         if (btnRef.current) {
           btnRef.current.style.transform = "none";
         }
       },
     });
-  }, [pos, getRandomPos]);
+  }, [pos, getRandomPos, onFirstDodge]);
 
-  // Also dodge when mouse gets close (proximity detection)
+  // Proximity detection
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       const btn = btnRef.current;
@@ -118,7 +123,6 @@ const RunawayButton = ({ label, onCaught }: Props) => {
       onCaught();
       return;
     }
-    // If somehow clicked, morph into Yes
     isMorphed.current = true;
     setText("Yes! 💖");
     anime({
@@ -131,16 +135,20 @@ const RunawayButton = ({ label, onCaught }: Props) => {
     setTimeout(onCaught, 700);
   };
 
+  if (!pos) return null;
+
   return (
     <button
       ref={btnRef}
       onMouseEnter={dodge}
       onTouchStart={dodge}
       onClick={handleClick}
-      className="fixed px-6 py-3 rounded-xl font-body font-semibold text-base bg-secondary text-secondary-foreground shadow-lg cursor-pointer z-50"
+      className="fixed py-4 rounded-xl font-body font-bold text-lg bg-secondary text-secondary-foreground shadow-lg cursor-pointer z-50"
       style={{
         left: `${pos.x}px`,
         top: `${pos.y}px`,
+        width: "180px",
+        maxWidth: "180px",
         willChange: "transform",
       }}
     >
