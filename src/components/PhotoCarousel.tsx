@@ -8,60 +8,56 @@ interface Props {
 
 const PhotoCarousel = ({ onComplete }: Props) => {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [cycleComplete, setCycleComplete] = useState(false);
   const slideRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const hasCompletedCycle = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout>>();
 
-  const goToSlide = useCallback((nextIndex: number, direction: number = 1) => {
+  const goToNext = useCallback(() => {
     if (!slideRef.current) return;
+    const next = currentIndex + 1;
+
+    if (next >= CAROUSEL_SLIDES.length && !hasCompletedCycle.current) {
+      hasCompletedCycle.current = true;
+      setTimeout(() => {
+        anime({
+          targets: containerRef.current,
+          opacity: 0,
+          translateY: -20,
+          duration: 500,
+          easing: "easeInCubic",
+          complete: onComplete,
+        });
+      }, 600);
+      return;
+    }
+
+    const nextIndex = next % CAROUSEL_SLIDES.length;
 
     anime.timeline({ easing: "easeInOutCubic" })
       .add({
         targets: slideRef.current,
-        translateX: [0, -100 * direction],
+        translateX: [0, -120],
         opacity: [1, 0],
-        duration: ANIM.carouselTransition / 2,
+        scale: [1, 0.95],
+        duration: 300,
       })
       .add({
         targets: slideRef.current,
-        translateX: [100 * direction, 0],
+        translateX: [120, 0],
         opacity: [0, 1],
-        duration: ANIM.carouselTransition / 2,
+        scale: [0.95, 1],
+        duration: 300,
         begin: () => setCurrentIndex(nextIndex),
       });
-  }, []);
+  }, [currentIndex, onComplete]);
 
-  // Auto-advance
+  // Fast auto-scroll
   useEffect(() => {
-    if (cycleComplete) return;
-
-    timerRef.current = setTimeout(() => {
-      const next = currentIndex + 1;
-      if (next >= CAROUSEL_SLIDES.length) {
-        if (!hasCompletedCycle.current) {
-          hasCompletedCycle.current = true;
-          setCycleComplete(true);
-          // Transition out after a beat
-          setTimeout(() => {
-            anime({
-              targets: containerRef.current,
-              opacity: 0,
-              translateY: -20,
-              duration: 500,
-              easing: "easeInCubic",
-              complete: onComplete,
-            });
-          }, 800);
-        }
-      } else {
-        goToSlide(next, 1);
-      }
-    }, ANIM.carouselSlideInterval);
-
+    if (hasCompletedCycle.current) return;
+    timerRef.current = setTimeout(goToNext, 1800);
     return () => clearTimeout(timerRef.current);
-  }, [currentIndex, cycleComplete, goToSlide, onComplete]);
+  }, [currentIndex, goToNext]);
 
   // Fade in on mount
   useEffect(() => {
@@ -94,29 +90,14 @@ const PhotoCarousel = ({ onComplete }: Props) => {
           </div>
         </div>
 
-        {/* Dots */}
+        {/* Progress dots only */}
         <div className="flex justify-center gap-2">
           {CAROUSEL_SLIDES.map((_, i) => (
-            <button key={i}
-              onClick={() => goToSlide(i, i > currentIndex ? 1 : -1)}
-              className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
+            <div key={i}
+              className={`w-2 h-2 rounded-full transition-all duration-300 ${
                 i === currentIndex ? "bg-valentine-rose scale-125" : "bg-secondary"
               }`} />
           ))}
-        </div>
-
-        {/* Nav arrows */}
-        <div className="flex justify-between mt-3">
-          <button
-            onClick={() => goToSlide((currentIndex - 1 + CAROUSEL_SLIDES.length) % CAROUSEL_SLIDES.length, -1)}
-            className="text-valentine-rose font-body text-sm hover:opacity-70 transition-opacity">
-            ← Prev
-          </button>
-          <button
-            onClick={() => goToSlide((currentIndex + 1) % CAROUSEL_SLIDES.length, 1)}
-            className="text-valentine-rose font-body text-sm hover:opacity-70 transition-opacity">
-            Next →
-          </button>
         </div>
       </div>
     </div>
