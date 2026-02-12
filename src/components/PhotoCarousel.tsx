@@ -1,6 +1,23 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import anime from "animejs";
-import { TEXTS, CAROUSEL_SLIDES, ANIM } from "@/lib/valentineConfig";
+import { TEXTS } from "@/lib/valentineConfig";
+
+// All images from the img folder (served from public/img)
+const CAROUSEL_IMAGES = [
+  "/img/IMG_1624.jpeg",
+  "/img/IMG_4076.jpeg",
+  "/img/IMG_4265.jpeg",
+  "/img/IMG_4321.jpeg",
+  "/img/IMG_5957.JPG",
+  "/img/IMG_7555.JPG",
+  "/img/IMG_7990.JPG",
+  "/img/Snapchat-1321052925.jpg",
+  "/img/Snapchat-1616417266.jpg",
+  "/img/Snapchat-319009705.jpg",
+];
+
+const SLIDE_DURATION_MS = 800; // < 1 sec per picture
+const CROSSFADE_DURATION_MS = 350;
 
 interface Props {
   onComplete: () => void;
@@ -8,16 +25,17 @@ interface Props {
 
 const PhotoCarousel = ({ onComplete }: Props) => {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const slideRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const hasCompletedCycle = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout>>();
 
   const goToNext = useCallback(() => {
-    if (!slideRef.current) return;
-    const next = currentIndex + 1;
+    if (hasCompletedCycle.current) return;
 
-    if (next >= CAROUSEL_SLIDES.length && !hasCompletedCycle.current) {
+    const nextIndex = (currentIndex + 1) % CAROUSEL_IMAGES.length;
+    const isLastSlide = currentIndex === CAROUSEL_IMAGES.length - 1;
+
+    if (isLastSlide) {
       hasCompletedCycle.current = true;
       setTimeout(() => {
         anime({
@@ -28,34 +46,17 @@ const PhotoCarousel = ({ onComplete }: Props) => {
           easing: "easeInCubic",
           complete: onComplete,
         });
-      }, 600);
+      }, CROSSFADE_DURATION_MS + 50);
       return;
     }
 
-    const nextIndex = next % CAROUSEL_SLIDES.length;
-
-    anime.timeline({ easing: "easeInOutCubic" })
-      .add({
-        targets: slideRef.current,
-        translateX: [0, -120],
-        opacity: [1, 0],
-        scale: [1, 0.95],
-        duration: 300,
-      })
-      .add({
-        targets: slideRef.current,
-        translateX: [120, 0],
-        opacity: [0, 1],
-        scale: [0.95, 1],
-        duration: 300,
-        begin: () => setCurrentIndex(nextIndex),
-      });
+    setCurrentIndex(nextIndex);
   }, [currentIndex, onComplete]);
 
-  // Fast auto-scroll
+  // Auto-advance: less than 1 sec per picture
   useEffect(() => {
     if (hasCompletedCycle.current) return;
-    timerRef.current = setTimeout(goToNext, 1800);
+    timerRef.current = setTimeout(goToNext, SLIDE_DURATION_MS);
     return () => clearTimeout(timerRef.current);
   }, [currentIndex, goToNext]);
 
@@ -70,8 +71,6 @@ const PhotoCarousel = ({ onComplete }: Props) => {
     });
   }, []);
 
-  const slide = CAROUSEL_SLIDES[currentIndex];
-
   return (
     <div ref={containerRef} className="w-full max-w-md mx-auto">
       <div className="rounded-2xl shadow-valentine p-6 bg-card">
@@ -79,24 +78,23 @@ const PhotoCarousel = ({ onComplete }: Props) => {
           {TEXTS.carouselTitle}
         </p>
 
-        {/* Slide area */}
-        <div className="relative overflow-hidden rounded-xl aspect-[4/3] mb-4">
-          <div ref={slideRef}
-            className="absolute inset-0 flex flex-col items-center justify-center rounded-xl"
-            style={{ backgroundColor: slide.color }}>
-            <span className="text-5xl mb-2">📸</span>
-            <p className="font-body text-lg font-semibold text-foreground">{slide.label}</p>
-            <p className="font-body text-sm text-muted-foreground mt-1">{slide.caption}</p>
-          </div>
-        </div>
-
-        {/* Progress dots only */}
-        <div className="flex justify-center gap-2">
-          {CAROUSEL_SLIDES.map((_, i) => (
-            <div key={i}
-              className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                i === currentIndex ? "bg-valentine-rose scale-125" : "bg-secondary"
-              }`} />
+        {/* Slide area – smooth crossfade, no dots or count */}
+        <div
+          className="relative overflow-hidden rounded-xl aspect-[4/3] bg-muted"
+          style={{ isolation: "isolate" }}
+        >
+          {CAROUSEL_IMAGES.map((src, i) => (
+            <div
+              key={src}
+              className="absolute inset-0 rounded-xl bg-cover bg-center bg-no-repeat ease-in-out"
+              style={{
+                backgroundImage: `url(${src})`,
+                opacity: i === currentIndex ? 1 : 0,
+                zIndex: i === currentIndex ? 1 : 0,
+                transition: `opacity ${CROSSFADE_DURATION_MS}ms ease-in-out`,
+              }}
+              aria-hidden={i !== currentIndex}
+            />
           ))}
         </div>
       </div>
